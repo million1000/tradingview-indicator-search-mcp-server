@@ -16,9 +16,8 @@ export class CircuitOpenError extends Error {
   constructor(msUntilReset) {
     const mins = Math.ceil(msUntilReset / 60000);
     super(
-      `TradingView rate-limit circuit is OPEN. Blocked repeatedly, so all requests are ` +
-        `paused for another ~${mins} min to avoid an IP ban. Use query_corpus to work ` +
-        `offline against already-cached scripts in the meantime.`
+      `TradingView 限流熔断器已触发（circuit is OPEN）。因为连续被拦截，所有请求暂停约 ${mins} 分钟，` +
+        `以避免 IP 被封。期间可以改用 query_corpus 对已缓存的脚本做离线检索。`
     );
     this.name = 'CircuitOpenError';
     this.retryAfterMs = msUntilReset;
@@ -28,8 +27,8 @@ export class CircuitOpenError extends Error {
 export class BudgetExceededError extends Error {
   constructor(budget) {
     super(
-      `Daily request budget of ${budget} reached. This is a safety cap against runaway ` +
-        `loops. It resets at 00:00 UTC, or raise IF_DAILY_BUDGET if you genuinely need more.`
+      `已达到每日请求上限 ${budget} 次。这是防止死循环的安全限制。额度在 UTC 00:00 重置；` +
+        `如果确实需要更多，可调高环境变量 IF_DAILY_BUDGET。`
     );
     this.name = 'BudgetExceededError';
   }

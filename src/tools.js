@@ -10,6 +10,7 @@
 import crypto from 'node:crypto';
 import { toListing, extractIdFromChartUrl } from './parse.js';
 import { TV_ORIGIN } from './config.js';
+import { translateTopic, MSG, TOPIC_HINT_ZH } from './i18n.js';
 
 const PUB_ID_RE = /(PUB|USER);[0-9a-fA-F]{32}/g;
 
@@ -21,7 +22,7 @@ export function createTools({ config, tv, store, throttle, http }) {
     const slug = extractIdFromChartUrl(chartUrl);
     if (!slug) {
       throw new Error(
-        `Could not read a script id from "${chartUrl}". Expected something like ` +
+        `无法从 "${chartUrl}" 中解析出脚本 ID。正确格式类似：` +
           `https://www.tradingview.com/script/K0SEi3Ct-Some-Name/`
       );
     }
@@ -36,7 +37,7 @@ export function createTools({ config, tv, store, throttle, http }) {
     const matches = [...String(html).matchAll(PUB_ID_RE)].map((m) => m[0]);
     const pub = matches.find((m) => m.startsWith('PUB;')) ?? matches[0];
     if (!pub) {
-      throw new Error(`Could not resolve ${chartUrl} to a script_id_part.`);
+      throw new Error(`无法把 ${chartUrl} 解析为 script_id_part。`);
     }
     return pub;
   }
@@ -44,19 +45,24 @@ export function createTools({ config, tv, store, throttle, http }) {
   return {
     // ---------------------------------------------------------------- search
     async search_scripts({ query, script_type, sort, page = 1 } = {}) {
-      const res = await tv.searchScripts({ query, scriptType: script_type, sort, page });
+      const topic = translateTopic(query);
+      const res = await tv.searchScripts({
+        query: topic.query,
+        scriptType: script_type,
+        sort,
+        page,
+      });
       return {
         query: query ?? null,
+        query_translated: topic.translated ? topic.query : undefined,
         topic: res.label,
         page,
         total_available: res.total,
         returned: res.returned,
         has_more: res.has_more,
         from_cache: res.from_cache,
-        note:
-          res.total >= 1000
-            ? 'TradingView caps broad result counts at 1000. Narrow the topic for real coverage.'
-            : undefined,
+        note: res.total >= 1000 ? MSG.cappedNote : undefined,
+        topic_hint: query ? undefined : TOPIC_HINT_ZH,
         items: listing(res.items),
       };
     },
@@ -92,7 +98,7 @@ export function createTools({ config, tv, store, throttle, http }) {
     async get_script_source({ script_id_part, chart_url, version = 'last', force = false } = {}) {
       let id = script_id_part;
       if (!id && chart_url) id = await resolveChartUrl(chart_url);
-      if (!id) throw new Error('Provide either script_id_part or chart_url.');
+      if (!id) throw new Error(MSG.needIdOrUrl);
 
       const res = await tv.getSource({ scriptIdPart: id, version, force });
       if (!res.ok) return res;
@@ -136,17 +142,27 @@ export function createTools({ config, tv, store, throttle, http }) {
       let harvest;
       if (harvest_id) {
         harvest = store.getHarvest(harvest_id);
-        if (!harvest) throw new Error(`Unknown harvest_id: ${harvest_id}`);
+        if (!harvest) throw new Error(MSG.unknownHarvest(harvest_id));
         if (harvest.status === 'complete') {
-          return { harvest_id, status: 'complete', note: 'Already finished.', ...summarise(harvest) };
+          return { harvest_id, status: 'complete', note: MSG.alreadyComplete, ...summarise(harvest) };
         }
       } else {
-        const spec = { source, query, username, script_type, sort, cap, fetch_sources };
+        // 中文主题词在这里同样需要翻译成 TradingView 主题
+        const topic = translateTopic(query);
+        const spec = {
+          source,
+          query: topic.query,
+          username,
+          script_type,
+          sort,
+          cap,
+          fetch_sources,
+        };
         if (source === 'search' && !query) {
           // Allowed: an empty query harvests the top feed.
         }
         if (source === 'author' && !username) {
-          throw new Error('source="author" requires a username.');
+          throw new Error(MSG.authorRequired);
         }
         harvest = store.createHarvest(crypto.randomUUID().slice(0, 8), spec);
       }
@@ -274,10 +290,7 @@ export function createTools({ config, tv, store, throttle, http }) {
         sources_pending: cursor.pending.length,
         listing_errors: listingErrors,
         next_step:
-          saved.status === 'complete'
-            ? 'Done. Use query_corpus to search everything collected, offline.'
-            : `Paused on the time budget, not an error. Call harvest_scripts again with ` +
-              `harvest_id="${saved.id}" to continue where it left off.`,
+          saved.status === 'complete' ? MSG.harvestDone : MSG.harvestPaused(saved.id),
         preview,
       };
     },
@@ -308,9 +321,7 @@ export function createTools({ config, tv, store, throttle, http }) {
         matched: rows.length,
         limit_applied: effectiveLimit,
         include_source,
-        note: include_source
-          ? 'include_source caps results at 3 because Pine sources are large.'
-          : 'Set include_source=true (with a small limit) to get full Pine code.',
+        note: include_source ? MSG.includeSourceCap : MSG.includeSourceHint,
         corpus: store.stats(),
         items: rows.map((r) => ({
           script_id_part: r.script_id_part,

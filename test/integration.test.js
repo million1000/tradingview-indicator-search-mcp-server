@@ -239,7 +239,7 @@ describe('TradingView.getSource', () => {
 
   it('rejects a malformed id before making any request', async () => {
     const { tv, http } = build(routes);
-    await expect(tv.getSource({ scriptIdPart: 'K0SEi3Ct' })).rejects.toThrow(/not a script_id_part/);
+    await expect(tv.getSource({ scriptIdPart: 'K0SEi3Ct' })).rejects.toThrow(/不是合法的 script_id_part/);
     expect(http.calls).toHaveLength(0);
   });
 
@@ -270,7 +270,7 @@ describe('tools', () => {
   it('search_scripts flags the 1000-result cap', async () => {
     const { tools } = build([['/scripts/', load('slug-feed-general.json')]]);
     const res = await tools.search_scripts({});
-    expect(res.note).toMatch(/caps broad result counts/);
+    expect(res.note).toMatch(/数量上限是 1000 条/);
   });
 
   it('get_script_source resolves a pasted chart URL', async () => {
@@ -285,7 +285,7 @@ describe('tools', () => {
 
   it('get_script_source requires some identifier', async () => {
     const { tools } = build([]);
-    await expect(tools.get_script_source({})).rejects.toThrow(/script_id_part or chart_url/);
+    await expect(tools.get_script_source({})).rejects.toThrow(/script_id_part 或 chart_url/);
   });
 
   it('query_corpus caps results hard when full source is requested', async () => {
@@ -347,12 +347,12 @@ describe('harvest_scripts', () => {
 
   it('refuses an unknown harvest_id rather than starting over', async () => {
     const { tools } = build([]);
-    await expect(tools.harvest_scripts({ harvest_id: 'nope' })).rejects.toThrow(/Unknown harvest_id/);
+    await expect(tools.harvest_scripts({ harvest_id: 'nope' })).rejects.toThrow(/未知的 harvest_id/);
   });
 
   it('requires a username when harvesting an author', async () => {
     const { tools } = build([]);
-    await expect(tools.harvest_scripts({ source: 'author' })).rejects.toThrow(/requires a username/);
+    await expect(tools.harvest_scripts({ source: 'author' })).rejects.toThrow(/必须提供 username/);
   });
 
   it('never exceeds the configured hard cap', async () => {

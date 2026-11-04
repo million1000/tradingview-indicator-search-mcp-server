@@ -1,5 +1,7 @@
 # TradingView Indicator Search MCP Server
 
+> **中文文档：[README.zh-CN.md](README.zh-CN.md)** — 本仓已做中文汉化（中文主题词、中文工具说明与提示）。/ Chinese docs: see README.zh-CN.md.
+
 **Search TradingView's public indicator and strategy library from Claude, Cursor, or any MCP client, and pull the full Pine Script source of any open-source script.**
 
 An [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server that turns

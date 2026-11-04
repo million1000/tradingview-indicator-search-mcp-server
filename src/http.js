@@ -238,7 +238,7 @@ export class HttpClient {
       try {
         return JSON.parse(text);
       } catch {
-        throw new HttpError(res.status, url, `Expected JSON, got: ${text.slice(0, 200)}`);
+        throw new HttpError(res.status, url, `预期返回 JSON，实际收到：${text.slice(0, 200)}`);
       }
     });
   }

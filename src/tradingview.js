@@ -42,7 +42,10 @@ export class TradingView {
   async searchScripts({ query = null, scriptType = null, sort = null, page = 1 } = {}) {
     const slug = query ? slugify(query) : null;
     if (query && !slug) {
-      throw new Error(`Query "${query}" does not produce a usable topic slug.`);
+      throw new Error(
+        `查询词“${query}”无法生成可用的主题 slug（只接受英文字母和数字）。` +
+          `请使用英文主题，或使用内置中文主题词（如“趋势跟踪”“剥头皮”）。`
+      );
     }
     return this.#slugFeed({
       segment: slug,
@@ -69,7 +72,8 @@ export class TradingView {
     const type = normalizeScriptType(scriptType);
     if (scriptType && !type) {
       throw new Error(
-        `Unknown script_type "${scriptType}". Use indicators, strategies, libraries or all.`
+        `未知的 script_type "${scriptType}"（Unknown script_type）。` +
+          `可用值：indicators（指标）、strategies（策略）、libraries（库）、all（全部）。`
       );
     }
 
@@ -97,9 +101,9 @@ export class TradingView {
     } catch (err) {
       if (err instanceof HttpError && err.status === 404) {
         throw new Error(
-          `No TradingView topic page for "${label}". Topic slugs are hyphenated single ` +
-            `concepts, for example "trend-following", "scalping", "order-blocks". ` +
-            `Try a broader or differently worded topic.`
+          `TradingView 上没有“${label}”这个主题页面。主题需为连字符形式（hyphenated）的 ` +
+            `单个概念，例如 "trend-following"、"scalping"、"order-blocks"；` +
+            `中文主题词（趋势跟踪、剥头皮、订单块等）也受支持。请换一个更宽泛或不同表述的主题。`
         );
       }
       throw err;
@@ -113,7 +117,7 @@ export class TradingView {
 
   /** Scripts published by one author, via the JSON API. */
   async authorScripts({ username, query = '', page = 1, perPage = 24 } = {}) {
-    if (!username) throw new Error('username is required');
+    if (!username) throw new Error('username 不能为空');
     const url = new URL('/api/v1/scripts/', TV_ORIGIN);
     url.searchParams.set('page', String(page));
     url.searchParams.set('per_page', String(Math.min(Math.max(perPage, 1), 24)));
@@ -132,8 +136,8 @@ export class TradingView {
     } catch (err) {
       if (err instanceof HttpError && (err.status === 400 || err.status === 404)) {
         throw new Error(
-          `TradingView rejected the username "${username}". Usernames are case-insensitive ` +
-            `but must match exactly otherwise, for example "TraderlifestyleYT".`
+          `TradingView 拒绝了这个用户名“${username}”。用户名不区分大小写，但其余字符必须完全一致，` +
+            `例如 "TraderlifestyleYT"。`
         );
       }
       throw err;
@@ -172,12 +176,11 @@ export class TradingView {
    * cached hit costs no request at all.
    */
   async getSource({ scriptIdPart, version = 'last', force = false } = {}) {
-    if (!scriptIdPart) throw new Error('script_id_part is required');
+    if (!scriptIdPart) throw new Error('script_id_part 不能为空');
     if (!/^(PUB|USER);[A-Za-z0-9]+$/i.test(scriptIdPart)) {
       throw new Error(
-        `"${scriptIdPart}" is not a script_id_part. Expected the form "PUB;<hash>", which ` +
-          `every search result carries. A chart URL alone is not enough: pass chart_url ` +
-          `instead and it will be resolved.`
+        `“${scriptIdPart}”不是合法的 script_id_part。正确格式形如 "PUB;<哈希>"，` +
+          `每个搜索结果里都带有这个字段。仅提供图表 URL 是不够的：请改用 chart_url 参数，系统会自动解析。`
       );
     }
 
@@ -205,8 +208,8 @@ export class TradingView {
         protected: true,
         script_id_part: scriptIdPart,
         reason:
-          'Script is closed source (invite-only or protected). TradingView never exposes ' +
-          'its Pine code, so this cannot be retrieved and will not be retried.',
+          '该脚本为闭源脚本（仅限邀请或受保护）。TradingView 从不公开其 Pine 代码，' +
+          '因此无法获取，也不会再重试。',
       };
     }
 
@@ -229,12 +232,12 @@ export class TradingView {
           ok: false,
           protected: true,
           script_id_part: scriptIdPart,
-          reason: 'TradingView refused the source (closed source or invite-only).',
+          reason: 'TradingView 拒绝提供源码（闭源或仅限邀请）。',
         };
       }
       if (err instanceof HttpError && err.status === 404) {
         throw new Error(
-          `No script found for ${scriptIdPart} at version "${version}". Try version "last".`
+          `未找到 ${scriptIdPart} 的 "${version}" 版本，可尝试 version "last"。`
         );
       }
       throw err;
